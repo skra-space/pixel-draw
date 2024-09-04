@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8x8 Grid Color Switcher with Preview, Save, and Character Set</title>
+    <style>
+        .container {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+        }
+        table {
+            border-collapse: collapse;
+        }
+        #grid td {
+            width: 10px;
+            height: 10px;
+            border: 1px solid #ccc;
+            background-color: white;
+        }
+        #preview td {
+            width: 1px;
+            height: 1px;
+            border: none;
+        }
+        #characterSet td {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #ccc;
+            text-align: center;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        #invertButton, #saveButton {
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div>
+            <table id="grid"></table>
+            <table id="preview"></table>
+            <button id="invertButton">Invert Colors</button>
+            <button id="saveButton">Save Sprite</button>
+        </div>
+        <table id="characterSet"></table>
+    </div>
+
+    <script>
+        const grid = document.getElementById('grid');
+        const preview = document.getElementById('preview');
+        const characterSet = document.getElementById('characterSet');
+        const invertButton = document.getElementById('invertButton');
+        const saveButton = document.getElementById('saveButton');
+        
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?:;()[]{}';
+        const sprites = {};
+
+        function createGrid() {
+            for (let i = 0; i < 8; i++) {
+                const gridRow = grid.insertRow();
+                const previewRow = preview.insertRow();
+                for (let j = 0; j < 8; j++) {
+                    const gridCell = gridRow.insertCell();
+                    const previewCell = previewRow.insertCell();
+                    
+                    gridCell.addEventListener('click', () => {
+                        const newColor = gridCell.style.backgroundColor === 'black' ? 'white' : 'black';
+                        gridCell.style.backgroundColor = newColor;
+                        previewCell.style.backgroundColor = newColor;
+                        updateCharacterSprite();
+                    });
+                }
+            }
+        }
+
+        function createCharacterSet() {
+            for (let i = 0; i < 10; i++) {
+                const row = characterSet.insertRow();
+                for (let j = 0; j < 16; j++) {
+                    if (i * 16 + j < characters.length) {
+                        const cell = row.insertCell();
+                        const char = characters[i * 16 + j];
+                        cell.textContent = char;
+                        cell.addEventListener('click', () => loadCharacter(char));
+                        sprites[char] = new Array(64).fill('white');
+                    }
+                }
+            }
+        }
+
+        function loadCharacter(char) {
+            const sprite = sprites[char];
+            const cells = grid.getElementsByTagName('td');
+            const previewCells = preview.getElementsByTagName('td');
+            for (let i = 0; i < 64; i++) {
+                cells[i].style.backgroundColor = sprite[i];
+                previewCells[i].style.backgroundColor = sprite[i];
+            }
+        }
+
+        function updateCharacterSprite() {
+            const cells = grid.getElementsByTagName('td');
+            const currentChar = getCurrentEditingCharacter();
+            if (currentChar) {
+                for (let i = 0; i < 64; i++) {
+                    sprites[currentChar][i] = cells[i].style.backgroundColor || 'white';
+                }
+            }
+        }
+
+        function getCurrentEditingCharacter() {
+            for (let char in sprites) {
+                const sprite = sprites[char];
+                const cells = grid.getElementsByTagName('td');
+                if (sprite.every((color, index) => color === (cells[index].style.backgroundColor || 'white'))) {
+                    return char;
+                }
+            }
+            return null;
+        }
+
+        createGrid();
+        createCharacterSet();
+
+        invertButton.addEventListener('click', () => {
+            const cells = grid.getElementsByTagName('td');
+            const previewCells = preview.getElementsByTagName('td');
+            for (let i = 0; i < cells.length; i++) {
+                const newColor = cells[i].style.backgroundColor === 'black' ? 'white' : 'black';
+                cells[i].style.backgroundColor = newColor;
+                previewCells[i].style.backgroundColor = newColor;
+            }
+            updateCharacterSprite();
+        });
+
+        saveButton.addEventListener('click', () => {
+            const cells = grid.getElementsByTagName('td');
+            let bytes = [];
+            for (let i = 0; i < 8; i++) {
+                let byte = 0;
+                for (let j = 0; j < 8; j++) {
+                    if (cells[i * 8 + j].style.backgroundColor === 'black') {
+                        byte |= (1 << (7 - j));
+                    }
+                }
+                bytes.push('0x' + byte.toString(16).padStart(2, '0'));
+            }
+            const content = bytes.join(', ');
+            const blob = new Blob([content], {type: 'text/plain'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'sprite.txt';
+            a.click();
+        });
+    </script>
+</body>
+</html>
